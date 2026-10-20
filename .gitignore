@@ -1,0 +1,20 @@
+# Xcode
+## User settings
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+## Build generated
+build/
+DerivedData/
+*.moved-aside
+*.xcuserstate
+
+## CocoaPods / Carthage / SPM
+Pods/
+Carthage/Build/
+.build/
+.swiftpm/
+
+## OS
+.DS_Store
