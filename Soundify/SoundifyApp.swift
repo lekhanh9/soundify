@@ -15,7 +15,7 @@ public struct SoundifyApp: App {
 
     public var body: some Scene {
         WindowGroup {
-            HomeView()
+            ContentView()
                 .environmentObject(audioManager)
                 .preferredColorScheme(.dark)
         }

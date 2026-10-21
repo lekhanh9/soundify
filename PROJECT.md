@@ -21,21 +21,23 @@ Soundify is an iOS streaming music player built in SwiftUI and AVFoundation.
 | F5 | Periodic Time Observation | Implements `AVPlayer.addPeriodicTimeObserver` on `.main` for responsive, non-blocking time/duration updates; cleans up in `deinit` | M2 | ORIGINAL_REQUEST §R2.1 |
 | F6 | Playback Controls API | Implements `loadPlaylist() async`, `play(song: Song)`, `playPause()`, `next()`, `previous()`, `seek(to seconds: Double)` | M2 | ORIGINAL_REQUEST §R2.1 |
 | F7 | Track Auto-Advance | Listens to `.AVPlayerItemDidPlayToEndTime` notification to automatically advance playback to `next()` | M2 | ORIGINAL_REQUEST §R2.1 |
-| F8 | App Environment Injection | `SoundifyApp.swift` instantiates `AudioManager` and injects via `.environmentObject(audioManager)` | M3 | ORIGINAL_REQUEST §R3.3 |
-| F9 | `HomeView` Async Loading & Streaming UI | Triggers `audioManager.loadPlaylist()` in `.task`, renders songs with `AsyncImage`, binds selection to `audioManager.play(song:)`, mini-player controls | M3 | ORIGINAL_REQUEST §R3.1 |
-| F10 | `PlayerView` Reactive Controls & Scrubbing | Binds display to `audioManager.currentSong`, toggle play/pause via `audioManager.playPause()`, binds scrub slider to `audioManager.currentTime` and triggers `audioManager.seek(to:)` | M3 | ORIGINAL_REQUEST §R3.2 |
-| F11 | Xcode PBX Project Synchronization | Updates `Soundify.xcodeproj/project.pbxproj` to include `Song.swift`, `MusicAPI.swift`, and `AudioManager.swift` in build phases and groups | M3 | ORIGINAL_REQUEST §R3.4 |
-| F12 | Full Syntax & Structure Validation | Verifies all Swift source files pass syntax and structure checks (`swiftc -parse`) with 0 errors | M4 | ORIGINAL_REQUEST §R4.1 |
-| F13 | PBX Plist Lint Validation | Verifies `Soundify.xcodeproj/project.pbxproj` passes `plutil -lint` without syntax errors | M4 | ORIGINAL_REQUEST §R4.1 |
-| F14 | Git Commit & Deployment | Commits with message `feat: implement online streaming API and AVPlayer core` and pushes to `origin main` | M4 | ORIGINAL_REQUEST §R4.2 |
+| F8 | App Environment Injection | `SoundifyApp.swift` instantiates `AudioManager` and injects via `.environmentObject(audioManager)` with root view `ContentView` | M3 | ORIGINAL_REQUEST §R4.3 |
+| F9 | `HomeView` Async Loading & Streaming UI | Triggers `audioManager.loadPlaylist()` in `.task`, renders songs with `AsyncImage`, binds selection to `audioManager.play(song:)`, mini-player controls | M3 | ORIGINAL_REQUEST §R4.1 |
+| F10 | `PlayerView` Reactive Controls & Scrubbing | Binds display to `audioManager.currentSong`, toggle play/pause via `audioManager.playPause()`, binds scrub slider to `audioManager.currentTime` and triggers `audioManager.seek(to:)` | M3 | ORIGINAL_REQUEST §R4.2 |
+| F11 | `ContentView` Root TabView Navigation | Implements root `TabView` navigation hosting `HomeView`, search, and library tabs | M3 | ORIGINAL_REQUEST §R4.3 |
+| F12 | Unit Tests (`Tests/SoundifyTests.swift`) | Implement and verify unit tests in `Tests/SoundifyTests.swift` testing `MusicAPI` JSON decoding and `Song` contracts | M4 | ORIGINAL_REQUEST §R5.1 |
+| F13 | Full Syntax & Structure Validation | Verifies all Swift source files pass syntax and AST parsing (`swiftc -parse`) with 0 errors | M4 | ORIGINAL_REQUEST §R5.2 |
+| F14 | Retain Cycle Memory Audit | Audits `AudioManager` for retain cycles ensuring weak references in closures and observers | M4 | ORIGINAL_REQUEST §R5.3 |
+| F15 | Xcode PBX Project Synchronization | Updates `Soundify.xcodeproj/project.pbxproj` to include all source files (`Song.swift`, `MusicAPI.swift`, `AudioManager.swift`, `ContentView.swift`) and verifies with `plutil -lint` | M4 | ORIGINAL_REQUEST §R5.4 |
+| F16 | Git Commit & Deployment | Commits with message `feat: build Soundify app with mega swarm architecture` and pushes to `origin main` | M4 | ORIGINAL_REQUEST §R5.5 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | M1 | Models & Networking Layer | `Soundify/Models/Song.swift`, `Soundify/Services/MusicAPI.swift` | none | DONE |
-| M2 | AVPlayer Audio Engine | `Soundify/Managers/AudioManager.swift` | M1 | PENDING |
-| M3 | SwiftUI UI & Project PBX | `Soundify/Views/HomeView.swift`, `Soundify/Views/PlayerView.swift`, `Soundify/SoundifyApp.swift`, `Soundify.xcodeproj/project.pbxproj` | M1, M2 | PENDING |
-| M4 | Verification & Remote Deployment | `swiftc -parse` validation, `plutil -lint`, git commit and push to `origin main` | M1, M2, M3 | PENDING |
+| M2 | AVPlayer Audio Engine | `Soundify/Managers/AudioManager.swift` | M1 | DONE |
+| M3 | SwiftUI Views & Navigation | `Soundify/Views/HomeView.swift`, `Soundify/Views/PlayerView.swift`, `Soundify/ContentView.swift`, `Soundify/SoundifyApp.swift` | M1, M2 | DONE |
+| M4 | Integrated QA, Audit & Deployment | `Tests/SoundifyTests.swift`, PBX sync, retain audit, `swiftc -parse`, git commit `feat: build Soundify app with mega swarm architecture` & push | M1, M2, M3 | DONE |
 
 ## Interface Contracts
 
@@ -89,16 +91,25 @@ Soundify is an iOS streaming music player built in SwiftUI and AVFoundation.
   ```
 
 ## Code Layout
-- Exclusive File Ownership:
-  - M1 Worker exclusively owns:
+- Exclusive File Ownership & Delegation Boundaries:
+  - Agent 3 (M1 Worker) exclusively owns:
     - `Soundify/Models/Song.swift`
     - `Soundify/Services/MusicAPI.swift`
-  - M2 Worker exclusively owns:
+  - Agent 4 (M2 Worker) exclusively owns:
     - `Soundify/Managers/AudioManager.swift`
-  - M3 Worker exclusively owns:
+  - Agent 5 (Home UI) exclusively owns:
     - `Soundify/Views/HomeView.swift`
+    - *Constraint*: Agent 5 MUST NEVER edit `AudioManager.swift`. If changes are needed, it must request them from Agent 4.
+  - Agent 6 (Player UI) exclusively owns:
     - `Soundify/Views/PlayerView.swift`
+  - Agent 7 (Glue & App) exclusively owns:
+    - `Soundify/ContentView.swift`
     - `Soundify/SoundifyApp.swift`
     - `Soundify.xcodeproj/project.pbxproj`
+  - Agents 8 & 9 (M4 QA & Audit) exclusively own:
+    - `Tests/SoundifyTests.swift`
+    - Verification test scripts and git operations
   - M4 Worker exclusively owns:
+    - `Tests/SoundifyTests.swift`
+    - `Soundify.xcodeproj/project.pbxproj`
     - Verification test scripts and git operations

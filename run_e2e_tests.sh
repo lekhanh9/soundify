@@ -89,7 +89,7 @@ echo -e "${CYAN}----------------------------------------------------------------
 
 # 1. Swift Syntax & Structure Checks
 echo -e "${BOLD}${BLUE}Checking Swift syntax (swiftc -parse) across all source files...${NC}"
-SWIFT_FILES=$(find Soundify -name "*.swift")
+SWIFT_FILES=$(find Soundify Tests -name "*.swift")
 SYNTAX_ERRORS=0
 
 for sf in $SWIFT_FILES; do
@@ -106,6 +106,17 @@ if [[ $SYNTAX_ERRORS -eq 0 ]]; then
 else
     echo -e "  [${RED}FAIL${NC}] $SYNTAX_ERRORS Swift file(s) failed syntax validation."
     exit 1
+fi
+
+# 1b. Swift Unit Tests (SoundifyTests.swift)
+if [[ -f "Tests/SoundifyTests.swift" ]]; then
+    echo -e "${BOLD}${BLUE}Executing Swift Unit Tests (Tests/SoundifyTests.swift)...${NC}"
+    if swiftc -parse-as-library Soundify/Models/Song.swift Soundify/Services/MusicAPI.swift Tests/SoundifyTests.swift -o /tmp/soundify_unit_tests && /tmp/soundify_unit_tests; then
+        echo -e "  [${GREEN}PASS${NC}] All Swift unit tests passed."
+    else
+        echo -e "  [${RED}FAIL${NC}] Swift unit tests failed."
+        exit 1
+    fi
 fi
 
 # 2. PBX Project Lint
