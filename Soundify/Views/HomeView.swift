@@ -1,7 +1,14 @@
+//
+//  HomeView.swift
+//  Soundify
+//
+//  Created for Soundify online music streaming and AVPlayer engine.
+//
+
 import SwiftUI
 
 public struct HomeView: View {
-    @EnvironmentObject public var musicManager: MusicManager
+    @EnvironmentObject public var audioManager: AudioManager
     @State private var selectedTab: Int = 0
 
     public init() {}
@@ -23,6 +30,28 @@ public struct HomeView: View {
                         categoryChipsView
                             .padding(.horizontal, 16)
 
+                        // Online Streaming Section: Trending Songs
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack {
+                                Text("Trending Online")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.white)
+
+                                Spacer()
+
+                                Text("\(audioManager.playlist.count) tracks")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(Color(red: 1.0, green: 0.33, blue: 0.0))
+                            }
+                            .padding(.horizontal, 16)
+
+                            VStack(spacing: 6) {
+                                ForEach(audioManager.playlist) { song in
+                                    songRow(for: song)
+                                }
+                            }
+                        }
+
                         // "Recent" Playlists section
                         VStack(alignment: .leading, spacing: 14) {
                             Text("Recently Played")
@@ -34,8 +63,8 @@ public struct HomeView: View {
                                 HStack(spacing: 16) {
                                     ForEach(Playlist.sampleRecent) { playlist in
                                         PlaylistCardView(playlist: playlist) {
-                                            if let firstTrack = playlist.tracks.first {
-                                                musicManager.play(track: firstTrack)
+                                            if let first = audioManager.playlist.first {
+                                                audioManager.play(song: first)
                                             }
                                         }
                                     }
@@ -55,41 +84,13 @@ public struct HomeView: View {
                                 HStack(spacing: 16) {
                                     ForEach(Playlist.sampleMadeForYou) { playlist in
                                         PlaylistCardView(playlist: playlist) {
-                                            if let firstTrack = playlist.tracks.first {
-                                                musicManager.play(track: firstTrack)
+                                            if let first = audioManager.playlist.first {
+                                                audioManager.play(song: first)
                                             }
                                         }
                                     }
                                 }
                                 .padding(.horizontal, 16)
-                            }
-                        }
-
-                        // SoundCloud-style Trending Tracks with Waveforms
-                        VStack(alignment: .leading, spacing: 14) {
-                            HStack {
-                                Text("Trending Waveforms")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.white)
-
-                                Spacer()
-
-                                Text("Show all")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(Color(red: 1.0, green: 0.33, blue: 0.0)) // SoundCloud Orange
-                            }
-                            .padding(.horizontal, 16)
-
-                            VStack(spacing: 4) {
-                                ForEach(musicManager.queue) { track in
-                                    TrackRowView(
-                                        track: track,
-                                        isCurrent: musicManager.currentTrack?.id == track.id,
-                                        isPlaying: musicManager.isPlaying
-                                    ) {
-                                        musicManager.play(track: track)
-                                    }
-                                }
                             }
                         }
 
@@ -102,16 +103,19 @@ public struct HomeView: View {
             }
 
             // Persistent Floating Mini-Player
-            if let track = musicManager.currentTrack {
-                miniPlayerView(for: track)
+            if let song = audioManager.currentSong {
+                miniPlayerView(for: song)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
             }
         }
         .preferredColorScheme(.dark)
-        .sheet(isPresented: $musicManager.isPlayerPresented) {
+        .task {
+            await audioManager.loadPlaylist()
+        }
+        .sheet(isPresented: $audioManager.isPlayerPresented) {
             PlayerView()
-                .environmentObject(musicManager)
+                .environmentObject(audioManager)
         }
     }
 
@@ -120,7 +124,6 @@ public struct HomeView: View {
     private var headerView: some View {
         HStack {
             HStack(spacing: 8) {
-                // App Logo Icon
                 Image(systemName: "waveform.circle.fill")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(
@@ -167,7 +170,7 @@ public struct HomeView: View {
             chipButton(title: "All", isSelected: selectedTab == 0) { selectedTab = 0 }
             chipButton(title: "Music", isSelected: selectedTab == 1) { selectedTab = 1 }
             chipButton(title: "Podcasts", isSelected: selectedTab == 2) { selectedTab = 2 }
-            chipButton(title: "SoundCloud Sets", isSelected: selectedTab == 3) { selectedTab = 3 }
+            chipButton(title: "Trending", isSelected: selectedTab == 3) { selectedTab = 3 }
             Spacer()
         }
     }
@@ -184,34 +187,103 @@ public struct HomeView: View {
         }
     }
 
-    private func miniPlayerView(for track: Track) -> some View {
+    private func songRow(for song: Song) -> some View {
+        let isCurrent = (audioManager.currentSong?.id == song.id)
+        return Button(action: {
+            audioManager.play(song: song)
+        }) {
+            HStack(spacing: 14) {
+                // Remote Artwork with AsyncImage
+                AsyncImage(url: song.artwork) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    case .failure:
+                        Color.gray.opacity(0.3)
+                            .overlay(
+                                Image(systemName: "music.note")
+                                    .foregroundColor(.white)
+                            )
+                    case .empty:
+                        ProgressView()
+                    @unknown default:
+                        Color.gray.opacity(0.3)
+                    }
+                }
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(song.title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(isCurrent ? Color(red: 0.11, green: 0.84, blue: 0.38) : .white)
+                        .lineLimit(1)
+
+                    Text(song.artist)
+                        .font(.system(size: 13))
+                        .foregroundColor(Color.gray)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                // Playing indicator or duration
+                if isCurrent && audioManager.isPlaying {
+                    Image(systemName: "speaker.wave.3.fill")
+                        .foregroundColor(Color(red: 0.11, green: 0.84, blue: 0.38))
+                        .font(.system(size: 16))
+                } else {
+                    Text(audioManager.formatTime(song.duration))
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundColor(Color.gray)
+                }
+
+                Button(action: {}) {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16))
+                        .foregroundColor(Color.gray)
+                        .padding(.horizontal, 4)
+                }
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 16)
+            .background(isCurrent ? Color.white.opacity(0.05) : Color.clear)
+            .cornerRadius(10)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private func miniPlayerView(for song: Song) -> some View {
         Button(action: {
-            musicManager.isPlayerPresented = true
+            audioManager.isPlayerPresented = true
         }) {
             HStack(spacing: 12) {
-                // Mini Artwork
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(
-                        LinearGradient(
-                            colors: track.gradientColors,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Image(systemName: track.coverIconName)
-                            .font(.system(size: 18))
-                            .foregroundColor(.white)
-                    )
+                // Mini Remote Artwork
+                AsyncImage(url: song.artwork) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        Color.gray.opacity(0.3)
+                            .overlay(
+                                Image(systemName: "music.note")
+                                    .foregroundColor(.white)
+                            )
+                    }
+                }
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(track.title)
+                    Text(song.title)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white)
                         .lineLimit(1)
 
-                    Text(track.artist)
+                    Text(song.artist)
                         .font(.system(size: 12))
                         .foregroundColor(Color.gray)
                         .lineLimit(1)
@@ -221,9 +293,9 @@ public struct HomeView: View {
 
                 // Play / Pause Button
                 Button(action: {
-                    musicManager.togglePlayPause()
+                    audioManager.togglePlayPause()
                 }) {
-                    Image(systemName: musicManager.isPlaying ? "pause.fill" : "play.fill")
+                    Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 20))
                         .foregroundColor(.white)
                         .frame(width: 36, height: 36)
@@ -231,7 +303,7 @@ public struct HomeView: View {
 
                 // Next Button
                 Button(action: {
-                    musicManager.next()
+                    audioManager.next()
                 }) {
                     Image(systemName: "forward.fill")
                         .font(.system(size: 18))
@@ -243,15 +315,13 @@ public struct HomeView: View {
             .padding(.vertical, 8)
             .background(
                 ZStack(alignment: .bottom) {
-                    // Blurred frosted glass background
                     RoundedRectangle(cornerRadius: 12)
                         .fill(Color(red: 0.14, green: 0.14, blue: 0.16).opacity(0.95))
 
-                    // Progress bar at bottom of mini-player
                     GeometryReader { geo in
                         Rectangle()
-                            .fill(Color(red: 1.0, green: 0.33, blue: 0.0)) // SoundCloud Orange progress line
-                            .frame(width: geo.size.width * CGFloat(musicManager.playbackProgress), height: 2.5)
+                            .fill(Color(red: 1.0, green: 0.33, blue: 0.0))
+                            .frame(width: geo.size.width * CGFloat(audioManager.playbackProgress), height: 2.5)
                     }
                     .frame(height: 2.5)
                 }

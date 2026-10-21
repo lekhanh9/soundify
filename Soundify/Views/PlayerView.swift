@@ -1,7 +1,14 @@
+//
+//  PlayerView.swift
+//  Soundify
+//
+//  Created for Soundify online music streaming and AVPlayer engine.
+//
+
 import SwiftUI
 
 public struct PlayerView: View {
-    @EnvironmentObject public var musicManager: MusicManager
+    @EnvironmentObject public var audioManager: AudioManager
     @Environment(\.presentationMode) var presentationMode
     @State private var isLiked: Bool = false
     @State private var isShuffle: Bool = false
@@ -12,40 +19,52 @@ public struct PlayerView: View {
     public init() {}
 
     public var body: some View {
-        let track = musicManager.currentTrack ?? Track.sampleTracks[0]
+        let currentSong = audioManager.currentSong ?? Song(
+            id: "default",
+            title: "Midnight Echoes",
+            artist: "Kavinsky & Daft Sound",
+            streamURL: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+            artworkURL: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60",
+            duration: 372.0
+        )
 
         ZStack {
             // MARK: - Layer 1: Ambient Blurred Background
-            LinearGradient(
-                colors: track.gradientColors,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .opacity(0.65)
+            AsyncImage(url: currentSong.artwork) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    LinearGradient(
+                        colors: [Color.purple, Color.blue],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            }
+            .opacity(0.4)
             .blur(radius: 60)
             .ignoresSafeArea()
 
             // Dark tint overlay for readable contrast
-            Color.black.opacity(0.4)
+            Color.black.opacity(0.55)
                 .ignoresSafeArea()
 
             // MARK: - Layer 2: Main Player Content
             VStack(spacing: 24) {
                 // Top Navigation Bar
-                topBarView(for: track)
+                topBarView(for: currentSong)
 
                 Spacer(minLength: 10)
 
                 // Large Centered Album Art
-                albumArtworkView(for: track)
+                albumArtworkView(for: currentSong)
 
                 Spacer(minLength: 10)
 
                 // Track Info & Heart Button
-                trackInfoView(for: track)
-
-                // SoundCloud Waveform Visualizer
-                waveformSectionView(for: track)
+                trackInfoView(for: currentSong)
 
                 // Custom Slider & Time Labels
                 sliderSectionView
@@ -61,13 +80,13 @@ public struct PlayerView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear {
-            sliderValue = musicManager.playbackProgress
+            sliderValue = audioManager.currentTime
         }
     }
 
     // MARK: - Subviews
 
-    private func topBarView(for track: Track) -> some View {
+    private func topBarView(for song: Song) -> some View {
         HStack {
             Button(action: {
                 presentationMode.wrappedValue.dismiss()
@@ -80,12 +99,12 @@ public struct PlayerView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text("PLAYING FROM PLAYLIST")
+                Text("PLAYING FROM STREAM")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(Color.white.opacity(0.7))
                     .kerning(1.2)
 
-                Text(track.album)
+                Text(song.title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
                     .lineLimit(1)
@@ -102,53 +121,47 @@ public struct PlayerView: View {
         .padding(.top, 10)
     }
 
-    private func albumArtworkView(for track: Track) -> some View {
+    private func albumArtworkView(for song: Song) -> some View {
         ZStack {
-            // Soft colored glow shadow
-            RoundedRectangle(cornerRadius: 24)
-                .fill(
-                    LinearGradient(
-                        colors: track.gradientColors,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 290, height: 290)
-                .blur(radius: 28)
-                .opacity(0.55)
-
-            // Front Album Card
-            RoundedRectangle(cornerRadius: 20)
-                .fill(
-                    LinearGradient(
-                        colors: track.gradientColors,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 300, height: 300)
-                .overlay(
-                    Image(systemName: track.coverIconName)
-                        .font(.system(size: 80, weight: .light))
-                        .foregroundColor(.white.opacity(0.95))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.4), radius: 14, x: 0, y: 8)
+            // Front Album Card with AsyncImage
+            AsyncImage(url: song.artwork) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                case .failure:
+                    Color.gray.opacity(0.3)
+                        .overlay(
+                            Image(systemName: "waveform.path.ecg")
+                                .font(.system(size: 70))
+                                .foregroundColor(.white.opacity(0.8))
+                        )
+                case .empty:
+                    ProgressView()
+                @unknown default:
+                    Color.gray.opacity(0.3)
+                }
+            }
+            .frame(width: 300, height: 300)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.6), radius: 18, x: 0, y: 10)
         }
     }
 
-    private func trackInfoView(for track: Track) -> some View {
+    private func trackInfoView(for song: Song) -> some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(track.title)
+                Text(song.title)
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(.white)
                     .lineLimit(1)
 
-                Text(track.artist)
+                Text(song.artist)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(Color.white.opacity(0.7))
                     .lineLimit(1)
@@ -166,45 +179,36 @@ public struct PlayerView: View {
         }
     }
 
-    private func waveformSectionView(for track: Track) -> some View {
-        VStack(spacing: 6) {
-            WaveformView(
-                samples: track.waveformSamples,
-                progress: isDraggingSlider ? sliderValue : musicManager.playbackProgress
-            ) { newProgress in
-                musicManager.seek(progress: newProgress)
-            }
-            .frame(height: 44)
-        }
-    }
-
     private var sliderSectionView: some View {
         VStack(spacing: 4) {
-            // Custom Seek Bar Slider
+            // Custom Seek Bar Slider bound to audioManager.currentTime and triggering audioManager.seek(to:)
             Slider(
                 value: Binding(
-                    get: { isDraggingSlider ? sliderValue : musicManager.playbackProgress },
+                    get: { isDraggingSlider ? sliderValue : audioManager.currentTime },
                     set: { newValue in
                         sliderValue = newValue
-                        musicManager.seek(progress: newValue)
+                        audioManager.seek(to: newValue)
                     }
                 ),
-                in: 0...1.0,
+                in: 0...max(audioManager.duration, 1.0),
                 onEditingChanged: { editing in
                     isDraggingSlider = editing
+                    if !editing {
+                        audioManager.seek(to: sliderValue)
+                    }
                 }
             )
             .accentColor(Color(red: 1.0, green: 0.33, blue: 0.0)) // SoundCloud Orange
 
             // Time Labels
             HStack {
-                Text(musicManager.formatTime(musicManager.currentTime))
+                Text(audioManager.formatTime(audioManager.currentTime))
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundColor(Color.white.opacity(0.6))
 
                 Spacer()
 
-                Text("-" + musicManager.formatTime(max(0, musicManager.duration - musicManager.currentTime)))
+                Text("-" + audioManager.formatTime(max(0, audioManager.duration - audioManager.currentTime)))
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundColor(Color.white.opacity(0.6))
             }
@@ -224,7 +228,7 @@ public struct PlayerView: View {
 
             // Previous Button
             Button(action: {
-                musicManager.previous()
+                audioManager.previous()
             }) {
                 Image(systemName: "backward.fill")
                     .font(.system(size: 28))
@@ -235,16 +239,16 @@ public struct PlayerView: View {
 
             // Big Play / Pause Button
             Button(action: {
-                musicManager.togglePlayPause()
+                audioManager.playPause()
             }) {
                 Circle()
                     .fill(Color.white)
                     .frame(width: 70, height: 70)
                     .overlay(
-                        Image(systemName: musicManager.isPlaying ? "pause.fill" : "play.fill")
+                        Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundColor(.black)
-                            .offset(x: musicManager.isPlaying ? 0 : 2)
+                            .offset(x: audioManager.isPlaying ? 0 : 2)
                     )
                     .shadow(color: .white.opacity(0.2), radius: 8, x: 0, y: 2)
             }
@@ -253,7 +257,7 @@ public struct PlayerView: View {
 
             // Next Button
             Button(action: {
-                musicManager.next()
+                audioManager.next()
             }) {
                 Image(systemName: "forward.fill")
                     .font(.system(size: 28))

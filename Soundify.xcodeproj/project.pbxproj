@@ -17,6 +17,9 @@
 		AA10000829F0000100000008 /* PlaylistCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20000829F0000100000008 /* PlaylistCardView.swift */; };
 		AA10000929F0000100000009 /* TrackRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20000929F0000100000009 /* TrackRowView.swift */; };
 		AA10001029F0000100000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA20001029F0000100000010 /* Assets.xcassets */; };
+		AA10001229F0000100000012 /* Song.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20001229F0000100000012 /* Song.swift */; };
+		AA10001329F0000100000013 /* MusicAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20001329F0000100000013 /* MusicAPI.swift */; };
+		AA10001429F0000100000014 /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20001429F0000100000014 /* AudioManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +35,9 @@
 		AA20000929F0000100000009 /* TrackRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackRowView.swift; sourceTree = "<group>"; };
 		AA20001029F0000100000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA20001129F0000100000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA20001229F0000100000012 /* Song.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Song.swift; sourceTree = "<group>"; };
+		AA20001329F0000100000013 /* MusicAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicAPI.swift; sourceTree = "<group>"; };
+		AA20001429F0000100000014 /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,6 +65,8 @@
 				AA20000129F0000100000001 /* SoundifyApp.swift */,
 				AA20000229F0000100000002 /* iaoSoundifyApp.swift */,
 				AA40000229F0000100000002 /* Models */,
+				AA40000829F0000100000008 /* Services */,
+				AA40000929F0000100000009 /* Managers */,
 				AA40000329F0000100000003 /* ViewModels */,
 				AA40000429F0000100000004 /* Views */,
 				AA40000529F0000100000005 /* Resources */,
@@ -71,8 +79,25 @@
 			isa = PBXGroup;
 			children = (
 				AA20000329F0000100000003 /* Track.swift */,
+				AA20001229F0000100000012 /* Song.swift */,
 			);
 			path = Models;
+			sourceTree = "<group>";
+		};
+		AA40000829F0000100000008 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AA20001329F0000100000013 /* MusicAPI.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		AA40000929F0000100000009 /* Managers */ = {
+			isa = PBXGroup;
+			children = (
+				AA20001429F0000100000014 /* AudioManager.swift */,
+			);
+			path = Managers;
 			sourceTree = "<group>";
 		};
 		AA40000329F0000100000003 /* ViewModels */ = {
@@ -197,6 +222,9 @@
 				AA10000729F0000100000007 /* WaveformView.swift in Sources */,
 				AA10000829F0000100000008 /* PlaylistCardView.swift in Sources */,
 				AA10000929F0000100000009 /* TrackRowView.swift in Sources */,
+				AA10001229F0000100000012 /* Song.swift in Sources */,
+				AA10001329F0000100000013 /* MusicAPI.swift in Sources */,
+				AA10001429F0000100000014 /* AudioManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
