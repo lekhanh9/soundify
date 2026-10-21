@@ -1,0 +1,92 @@
+name: Build Test IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_configuration:
+        description: 'Build Configuration'
+        required: true
+        default: 'Release'
+        type: choice
+        options:
+          - Release
+          - Debug
+  push:
+    branches:
+      - main
+    paths:
+      - 'Soundify/**'
+      - 'Soundify.xcodeproj/**'
+      - '.github/workflows/build-ipa.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Soundify/**'
+      - 'Soundify.xcodeproj/**'
+
+jobs:
+  build-ipa:
+    name: Build & Package IPA
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: |
+          if [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app
+          elif [ -d "/Applications/Xcode_15.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.2.app
+          elif [ -d "/Applications/Xcode.app" ]; then
+            sudo xcode-select -s /Applications/Xcode.app
+          fi
+          xcodebuild -version
+
+      - name: Build Archive
+        run: |
+          CONFIG="${{ inputs.build_configuration || 'Release' }}"
+          echo "Building Soundify with configuration: $CONFIG"
+          xcodebuild archive \
+            -project Soundify.xcodeproj \
+            -scheme Soundify \
+            -configuration "$CONFIG" \
+            -destination "generic/platform=iOS" \
+            -archivePath "build/Soundify.xcarchive" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -r "build/Soundify.xcarchive/Products/Applications/Soundify.app" Payload/
+          zip -vr Soundify.ipa Payload
+          ls -lh Soundify.ipa
+
+      - name: Upload Test IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Soundify-Test-IPA
+          path: Soundify.ipa
+          retention-days: 14
+
+      - name: Generate Build Summary
+        run: |
+          IPA_SIZE=$(du -h Soundify.ipa | cut -f1)
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ### 🚀 Soundify Test IPA Built Successfully!
+
+          - **Branch:** \`${{ github.ref_name }}\`
+          - **Commit:** \`${{ github.sha }}\`
+          - **File:** \`Soundify.ipa\` (${IPA_SIZE})
+
+          #### 📱 How to Install:
+          1. Go to the **Actions** tab on GitHub, select this run, and download **Soundify-Test-IPA**.
+          2. Sideload onto iOS via:
+             - **SideStore / AltStore** (Personal Apple ID)
+             - **TrollStore** (Direct install if supported)
+             - **Sideloadly / Scarlet**
+          EOF
