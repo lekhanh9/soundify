@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  Soundify
 //
-//  Created for Soundify online music streaming and AVPlayer engine.
+//  Created for Soundify - Spotify Root Navigation & Tab Experience.
 //
 
 import SwiftUI
@@ -14,71 +14,37 @@ public struct ContentView: View {
     public init() {}
 
     public var body: some View {
-        TabView(selection: $selectedTab) {
-            HomeView()
-                .tabItem {
-                    Label("Home", systemImage: "house.fill")
-                }
-                .tag(0)
+        ZStack(alignment: .bottom) {
+            TabView(selection: $selectedTab) {
+                HomeView()
+                    .tabItem {
+                        Label("Home", systemImage: selectedTab == 0 ? "house.fill" : "house")
+                    }
+                    .tag(0)
 
-            searchView
-                .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
-                }
-                .tag(1)
+                SearchView()
+                    .tabItem {
+                        Label("Search", systemImage: "magnifyingglass")
+                    }
+                    .tag(1)
 
-            libraryView
-                .tabItem {
-                    Label("Library", systemImage: "books.vertical.fill")
-                }
-                .tag(2)
+                LibraryView()
+                    .tabItem {
+                        Label("Your Library", systemImage: selectedTab == 2 ? "books.vertical.fill" : "books.vertical")
+                    }
+                    .tag(2)
+            }
+            .preferredColorScheme(.dark)
+            .accentColor(Color.white)
+
+            // When user is on Search (1) or Library (2), render MiniPlayer above the tab bar if playing
+            if selectedTab != 0, audioManager.currentSong != nil {
+                MiniPlayerBar()
+                    .padding(.bottom, 54) // right above iOS Tab Bar
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .preferredColorScheme(.dark)
-        .accentColor(Color(red: 0.11, green: 0.84, blue: 0.38))
-    }
-
-    private var searchView: some View {
-        ZStack {
-            Color(red: 0.05, green: 0.05, blue: 0.07)
-                .ignoresSafeArea()
-
-            VStack(spacing: 16) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 48))
-                    .foregroundColor(Color.gray)
-
-                Text("Search")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-
-                Text("Find songs, artists, and podcasts")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-            }
-        }
-    }
-
-    private var libraryView: some View {
-        ZStack {
-            Color(red: 0.05, green: 0.05, blue: 0.07)
-                .ignoresSafeArea()
-
-            VStack(spacing: 16) {
-                Image(systemName: "books.vertical.fill")
-                    .font(.system(size: 48))
-                    .foregroundColor(Color.gray)
-
-                Text("Your Library")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-
-                Text("Your playlists, saved tracks, and artists will appear here")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-            }
-        }
     }
 }
 

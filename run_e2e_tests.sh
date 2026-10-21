@@ -111,7 +111,7 @@ fi
 # 1b. Swift Unit Tests (SoundifyTests.swift)
 if [[ -f "Tests/SoundifyTests.swift" ]]; then
     echo -e "${BOLD}${BLUE}Executing Swift Unit Tests (Tests/SoundifyTests.swift)...${NC}"
-    if swiftc -parse-as-library Soundify/Models/Song.swift Soundify/Services/MusicAPI.swift Tests/SoundifyTests.swift -o /tmp/soundify_unit_tests && /tmp/soundify_unit_tests; then
+    if swiftc -parse-as-library Soundify/Models/Song.swift Soundify/Services/MusicAPI.swift Soundify/Services/LyricsService.swift Tests/SoundifyTests.swift -o /tmp/soundify_unit_tests && /tmp/soundify_unit_tests; then
         echo -e "  [${GREEN}PASS${NC}] All Swift unit tests passed."
     else
         echo -e "  [${RED}FAIL${NC}] Swift unit tests failed."

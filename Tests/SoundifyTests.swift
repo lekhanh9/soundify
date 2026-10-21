@@ -333,6 +333,140 @@ public class SoundifyTests: XCTestCase {
         }
         wait(for: [expectation], timeout: 5.0)
     }
+
+    // MARK: - Spotify & Open-Source Music Player Tests
+
+    func testRepeatModeCycle() {
+        var mode: RepeatMode = .off
+        func toggle(_ m: inout RepeatMode) {
+            switch m {
+            case .off: m = .all
+            case .all: m = .one
+            case .one: m = .off
+            }
+        }
+
+        XCTAssertEqual(mode, .off)
+        toggle(&mode)
+        XCTAssertEqual(mode, .all)
+        toggle(&mode)
+        XCTAssertEqual(mode, .one)
+        toggle(&mode)
+        XCTAssertEqual(mode, .off)
+    }
+
+    func testLikedSongsCollectionAndToggle() {
+        var likedIDs: Set<String> = []
+        let songA = Song(id: "s1", title: "A", artist: "A", streamURL: "https://example.com/a.mp3", artworkURL: "https://example.com/a.jpg", duration: 100)
+        let songB = Song(id: "s2", title: "B", artist: "B", streamURL: "https://example.com/b.mp3", artworkURL: "https://example.com/b.jpg", duration: 120)
+
+        func toggleLike(_ s: Song) {
+            if likedIDs.contains(s.id) {
+                likedIDs.remove(s.id)
+            } else {
+                likedIDs.insert(s.id)
+            }
+        }
+
+        XCTAssertFalse(likedIDs.contains(songA.id))
+        toggleLike(songA)
+        XCTAssertTrue(likedIDs.contains(songA.id))
+        XCTAssertFalse(likedIDs.contains(songB.id))
+
+        toggleLike(songB)
+        XCTAssertTrue(likedIDs.contains(songA.id))
+        XCTAssertTrue(likedIDs.contains(songB.id))
+        XCTAssertEqual(likedIDs.count, 2)
+
+        toggleLike(songA)
+        XCTAssertFalse(likedIDs.contains(songA.id))
+        XCTAssertTrue(likedIDs.contains(songB.id))
+        XCTAssertEqual(likedIDs.count, 1)
+    }
+
+    func testQueueOperationsOnSongCollection() {
+        var queue: [Song] = []
+        let s1 = Song(id: "q1", title: "Song 1", artist: "A1", streamURL: "https://example.com/1.mp3", artworkURL: "https://example.com/1.jpg", duration: 180)
+        let s2 = Song(id: "q2", title: "Song 2", artist: "A2", streamURL: "https://example.com/2.mp3", artworkURL: "https://example.com/2.jpg", duration: 200)
+        let s3 = Song(id: "q3", title: "Song 3", artist: "A3", streamURL: "https://example.com/3.mp3", artworkURL: "https://example.com/3.jpg", duration: 220)
+
+        // Add to queue
+        queue.append(s1)
+        queue.append(s2)
+        XCTAssertEqual(queue.count, 2)
+        XCTAssertEqual(queue.first?.id, "q1")
+
+        // Play Next (insert at top)
+        queue.insert(s3, at: 0)
+        XCTAssertEqual(queue.count, 3)
+        XCTAssertEqual(queue.first?.id, "q3")
+
+        // Consume next
+        let nextSong = queue.removeFirst()
+        XCTAssertEqual(nextSong.id, "q3")
+        XCTAssertEqual(queue.count, 2)
+
+        // Clear queue
+        queue.removeAll()
+        XCTAssertTrue(queue.isEmpty)
+    }
+
+    func testLRCLyricsParsingBasic() {
+        let sampleLRC = """
+        [00:04.50] In the dead of night, the city glows
+        [00:10.00] Neon lights reflection on the road
+        [00:25.80] Electric heartbeat in the open air
+        """
+        let service = LyricsService.shared
+        let lines = service.parseLRC(sampleLRC)
+
+        XCTAssertEqual(lines.count, 3)
+        XCTAssertEqual(lines[0].time, 4.5, accuracy: 0.01)
+        XCTAssertEqual(lines[0].text, "In the dead of night, the city glows")
+        XCTAssertEqual(lines[1].time, 10.0, accuracy: 0.01)
+        XCTAssertEqual(lines[1].text, "Neon lights reflection on the road")
+        XCTAssertEqual(lines[2].time, 25.8, accuracy: 0.01)
+        XCTAssertEqual(lines[2].text, "Electric heartbeat in the open air")
+    }
+
+    func testLRCLyricsFractionalTimestampsAndSorting() {
+        let unsortedLRC = """
+        [01:15.25] Third line
+        [00:05.10] First line
+        [00:45.00] Second line
+        """
+        let lines = LyricsService.shared.parseLRC(unsortedLRC)
+
+        XCTAssertEqual(lines.count, 3)
+        // Should be sorted by time
+        XCTAssertEqual(lines[0].text, "First line")
+        XCTAssertEqual(lines[0].time, 5.1, accuracy: 0.01)
+        XCTAssertEqual(lines[1].text, "Second line")
+        XCTAssertEqual(lines[1].time, 45.0, accuracy: 0.01)
+        XCTAssertEqual(lines[2].text, "Third line")
+        XCTAssertEqual(lines[2].time, 75.25, accuracy: 0.01)
+    }
+
+    func testLRCLyricsCurrentLineLookup() {
+        let sampleLRC = """
+        [00:10.00] Intro line
+        [00:20.00] Verse 1
+        [00:40.00] Chorus
+        """
+        let lines = LyricsService.shared.parseLRC(sampleLRC)
+        let service = LyricsService.shared
+
+        // Before first line
+        XCTAssertNil(service.currentLineIndex(at: 5.0, in: lines))
+        // Exactly at first line
+        XCTAssertEqual(service.currentLineIndex(at: 10.0, in: lines), 0)
+        // Between first and second
+        XCTAssertEqual(service.currentLineIndex(at: 15.0, in: lines), 0)
+        // At second line
+        XCTAssertEqual(service.currentLineIndex(at: 20.0, in: lines), 1)
+        // Past last line
+        XCTAssertEqual(service.currentLineIndex(at: 60.0, in: lines), 2)
+    }
 }
 
 // MARK: - Linux Test Discovery & Runner
@@ -354,6 +488,12 @@ extension SoundifyTests {
         ("testMusicAPIFetchTrendingSongsAsync", testMusicAPIFetchTrendingSongsAsync),
         ("testMusicAPISharedInstanceFetchTrendingSongsAsync", testMusicAPISharedInstanceFetchTrendingSongsAsync),
         ("testMusicAPIFallbackOnInvalidEndpoint", testMusicAPIFallbackOnInvalidEndpoint),
+        ("testRepeatModeCycle", testRepeatModeCycle),
+        ("testLikedSongsCollectionAndToggle", testLikedSongsCollectionAndToggle),
+        ("testQueueOperationsOnSongCollection", testQueueOperationsOnSongCollection),
+        ("testLRCLyricsParsingBasic", testLRCLyricsParsingBasic),
+        ("testLRCLyricsFractionalTimestampsAndSorting", testLRCLyricsFractionalTimestampsAndSorting),
+        ("testLRCLyricsCurrentLineLookup", testLRCLyricsCurrentLineLookup),
     ]
 }
 

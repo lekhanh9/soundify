@@ -22,6 +22,11 @@
 		AA10001429F0000100000014 /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20001429F0000100000014 /* AudioManager.swift */; };
 		AA10001529F0000100000015 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20001529F0000100000015 /* ContentView.swift */; };
 		AA10001629F0000100000016 /* SoundifyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20001629F0000100000016 /* SoundifyTests.swift */; };
+		AA10001729F0000100000017 /* SpotifyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20001729F0000100000017 /* SpotifyTheme.swift */; };
+		AA10001829F0000100000018 /* LyricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20001829F0000100000018 /* LyricsService.swift */; };
+		AA10001929F0000100000019 /* MiniPlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20001929F0000100000019 /* MiniPlayerBar.swift */; };
+		AA10002029F0000100000020 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20002029F0000100000020 /* SearchView.swift */; };
+		AA10002129F0000100000021 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20002129F0000100000021 /* LibraryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +47,11 @@
 		AA20001429F0000100000014 /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
 		AA20001529F0000100000015 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AA20001629F0000100000016 /* SoundifyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundifyTests.swift; sourceTree = "<group>"; };
+		AA20001729F0000100000017 /* SpotifyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyTheme.swift; sourceTree = "<group>"; };
+		AA20001829F0000100000018 /* LyricsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsService.swift; sourceTree = "<group>"; };
+		AA20001929F0000100000019 /* MiniPlayerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerBar.swift; sourceTree = "<group>"; };
+		AA20002029F0000100000020 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		AA20002129F0000100000021 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,6 +104,7 @@
 			isa = PBXGroup;
 			children = (
 				AA20001329F0000100000013 /* MusicAPI.swift */,
+				AA20001829F0000100000018 /* LyricsService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -119,6 +130,8 @@
 			children = (
 				AA20000529F0000100000005 /* HomeView.swift */,
 				AA20000629F0000100000006 /* PlayerView.swift */,
+				AA20002029F0000100000020 /* SearchView.swift */,
+				AA20002129F0000100000021 /* LibraryView.swift */,
 				AA40000729F0000100000007 /* Components */,
 			);
 			path = Views;
@@ -130,6 +143,8 @@
 				AA20000729F0000100000007 /* WaveformView.swift */,
 				AA20000829F0000100000008 /* PlaylistCardView.swift */,
 				AA20000929F0000100000009 /* TrackRowView.swift */,
+				AA20001729F0000100000017 /* SpotifyTheme.swift */,
+				AA20001929F0000100000019 /* MiniPlayerBar.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -241,6 +256,11 @@
 				AA10001429F0000100000014 /* AudioManager.swift in Sources */,
 				AA10001529F0000100000015 /* ContentView.swift in Sources */,
 				AA10001629F0000100000016 /* SoundifyTests.swift in Sources */,
+				AA10001729F0000100000017 /* SpotifyTheme.swift in Sources */,
+				AA10001829F0000100000018 /* LyricsService.swift in Sources */,
+				AA10001929F0000100000019 /* MiniPlayerBar.swift in Sources */,
+				AA10002029F0000100000020 /* SearchView.swift in Sources */,
+				AA10002129F0000100000021 /* LibraryView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -41,3 +41,9 @@ public struct Song: Identifiable, Codable, Hashable {
         URL(string: artworkURL)
     }
 }
+
+public enum RepeatMode: String, CaseIterable, Codable {
+    case off
+    case all
+    case one
+}

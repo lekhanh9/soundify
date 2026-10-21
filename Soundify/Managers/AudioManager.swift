@@ -2,12 +2,15 @@
 //  AudioManager.swift
 //  Soundify
 //
-//  Created for Soundify online music streaming and AVPlayer engine.
+//  Created for Soundify - Spotify & Open-Source AVPlayer Audio Engine.
 //
 
 import Foundation
 import AVFoundation
 import Combine
+#if canImport(MediaPlayer)
+import MediaPlayer
+#endif
 
 public final class AudioManager: ObservableObject {
     // MARK: - Published Properties
@@ -18,15 +21,23 @@ public final class AudioManager: ObservableObject {
     @Published public var playlist: [Song] = []
     @Published public var isPlayerPresented: Bool = false
 
+    // MARK: - Open-Source & Spotify Enhancements
+    @Published public var isShuffle: Bool = false
+    @Published public var repeatMode: RepeatMode = .off
+    @Published public var queue: [Song] = []
+    @Published public var likedSongIDs: Set<String> = []
+
     // MARK: - Internal Player & Observers
     private var player: AVPlayer = AVPlayer()
     private var playerItem: AVPlayerItem?
     private var timeObserverToken: Any?
+    private var originalPlaylist: [Song] = []
 
     // MARK: - Initialization & Deinitialization
     public init() {
         configureAudioSession()
         setupPeriodicTimeObserver()
+        setupRemoteCommands()
     }
 
     deinit {
@@ -60,6 +71,7 @@ public final class AudioManager: ObservableObject {
                     self.duration = itemDuration
                 }
             }
+            self.updateNowPlayingPlaybackInfo()
         }
     }
 
@@ -76,6 +88,7 @@ public final class AudioManager: ObservableObject {
             let songs = try await MusicAPI.shared.fetchTrendingSongs()
             await MainActor.run {
                 self.playlist = songs
+                self.originalPlaylist = songs
                 if self.currentSong == nil, let first = songs.first {
                     self.currentSong = first
                     self.duration = first.duration
@@ -112,10 +125,12 @@ public final class AudioManager: ObservableObject {
             )
 
             player.replaceCurrentItem(with: item)
+            updateNowPlayingMetadata(for: song)
         }
 
         player.play()
         self.isPlaying = true
+        updateNowPlayingPlaybackInfo()
     }
 
     public func play(song: Song) {
@@ -133,6 +148,7 @@ public final class AudioManager: ObservableObject {
     public func pause() {
         player.pause()
         self.isPlaying = false
+        updateNowPlayingPlaybackInfo()
     }
 
     public func playPause() {
@@ -148,6 +164,13 @@ public final class AudioManager: ObservableObject {
     }
 
     public func next() {
+        // 1. If queue has items, consume top of queue
+        if !queue.isEmpty {
+            let nextSong = queue.removeFirst()
+            playSong(nextSong, forceRestart: true)
+            return
+        }
+
         guard !playlist.isEmpty else {
             currentSong = nil
             isPlaying = false
@@ -156,8 +179,24 @@ public final class AudioManager: ObservableObject {
             return
         }
 
+        if isShuffle && playlist.count > 1 {
+            let available = playlist.filter { $0.id != currentSong?.id }
+            if let randomSong = available.randomElement() {
+                playSong(randomSong, forceRestart: true)
+                return
+            }
+        }
+
         if let current = currentSong,
            let index = playlist.firstIndex(where: { $0.id == current.id }) {
+            let isLast = (index == playlist.count - 1)
+            if isLast && repeatMode == .off {
+                // End of playlist and repeat is off
+                pause()
+                seek(to: 0.0)
+                return
+            }
+
             let nextIndex = (index + 1) % playlist.count
             let nextSong = playlist[nextIndex]
             if playlist.count == 1 {
@@ -211,6 +250,7 @@ public final class AudioManager: ObservableObject {
         self.currentTime = clamped
         let targetTime = CMTime(seconds: clamped, preferredTimescale: 600)
         player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero)
+        updateNowPlayingPlaybackInfo()
     }
 
     public func seek(progress: Double) {
@@ -218,9 +258,136 @@ public final class AudioManager: ObservableObject {
         seek(to: clampedProgress * duration)
     }
 
+    // MARK: - Spotify & Open-Source Queue / Shuffle / Repeat Controls
+
+    public func toggleShuffle() {
+        isShuffle.toggle()
+        if isShuffle {
+            var shuffled = playlist
+            if let current = currentSong {
+                shuffled.removeAll(where: { $0.id == current.id })
+                shuffled.shuffle()
+                playlist = [current] + shuffled
+            } else {
+                playlist.shuffle()
+            }
+        } else {
+            playlist = originalPlaylist
+        }
+    }
+
+    public func toggleRepeat() {
+        switch repeatMode {
+        case .off:
+            repeatMode = .all
+        case .all:
+            repeatMode = .one
+        case .one:
+            repeatMode = .off
+        }
+    }
+
+    public func toggleLike(song: Song) {
+        if likedSongIDs.contains(song.id) {
+            likedSongIDs.remove(song.id)
+        } else {
+            likedSongIDs.insert(song.id)
+        }
+    }
+
+    public func isLiked(song: Song) -> Bool {
+        return likedSongIDs.contains(song.id)
+    }
+
+    public func addToQueue(song: Song) {
+        queue.append(song)
+    }
+
+    public func playNext(song: Song) {
+        queue.insert(song, at: 0)
+    }
+
+    public func removeFromQueue(at index: Int) {
+        guard queue.indices.contains(index) else { return }
+        queue.remove(at: index)
+    }
+
+    public func clearQueue() {
+        queue.removeAll()
+    }
+
     // MARK: - Notifications
     @objc private func playerItemDidReachEnd(_ notification: Notification) {
-        next()
+        if repeatMode == .one {
+            seek(to: 0.0)
+            player.play()
+            self.isPlaying = true
+        } else {
+            next()
+        }
+    }
+
+    // MARK: - Lock Screen & Control Center Integration (MPNowPlayingInfoCenter)
+    private func setupRemoteCommands() {
+        #if canImport(MediaPlayer)
+        let commandCenter = MPRemoteCommandCenter.shared()
+
+        commandCenter.playCommand.addTarget { [weak self] _ in
+            self?.play()
+            return .success
+        }
+
+        commandCenter.pauseCommand.addTarget { [weak self] _ in
+            self?.pause()
+            return .success
+        }
+
+        commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
+            self?.togglePlayPause()
+            return .success
+        }
+
+        commandCenter.nextTrackCommand.addTarget { [weak self] _ in
+            self?.next()
+            return .success
+        }
+
+        commandCenter.previousTrackCommand.addTarget { [weak self] _ in
+            self?.previous()
+            return .success
+        }
+
+        commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let positionEvent = event as? MPChangePlaybackPositionCommandEvent else {
+                return .commandFailed
+            }
+            self?.seek(to: positionEvent.positionTime)
+            return .success
+        }
+        #endif
+    }
+
+    private func updateNowPlayingMetadata(for song: Song) {
+        #if canImport(MediaPlayer)
+        var nowPlayingInfo = [String: Any]()
+        nowPlayingInfo[MPMediaItemPropertyTitle] = song.title
+        nowPlayingInfo[MPMediaItemPropertyArtist] = song.artist
+        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = song.duration
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        #endif
+    }
+
+    private func updateNowPlayingPlaybackInfo() {
+        #if canImport(MediaPlayer)
+        guard var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        #endif
     }
 
     // MARK: - Compatibility Helpers & Formatter
@@ -240,5 +407,11 @@ public final class AudioManager: ObservableObject {
         let minutes = totalSeconds / 60
         let seconds = totalSeconds % 60
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    public func formatRemainingTime() -> String {
+        guard duration > 0.0 else { return "-00:00" }
+        let remaining = max(0.0, duration - currentTime)
+        return "-\(formatTime(remaining))"
     }
 }
